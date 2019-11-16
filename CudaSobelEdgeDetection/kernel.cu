@@ -17,11 +17,8 @@
 
 unsigned int width, height;
 
-unsigned char* imgres;
-
 __device__ unsigned char* dev_orig;
 __device__ unsigned char* dev_result;
-
 
 
 __global__ void EdgeDetect(int width, int height) {
@@ -30,7 +27,6 @@ __global__ void EdgeDetect(int width, int height) {
 	int row = blockIdx.y * blockDim.y + threadIdx.y; //i blockidx a hanyadik block az oszlopban, blockdim az a blokkon belüli sor
 	int col = blockIdx.x * blockDim.x + threadIdx.x; //j
 	
-
 	if (row >= height || col >= width || row < 1 || col < 1) return; //olyan szál le se fusson ami nem a képen kívül van
 
 	int Gx[3][3] = { {-1,0,1}, {-2,0,2}, {-1,0,1} };
@@ -87,11 +83,11 @@ int main()
 
 	printf("Timer[%s]=%f\n\n", "Edge decetion", (float)timer.GetTimeMilliSec() / 1);
 	
-	cudaMemcpyFromSymbol(imgres, dev_result, IMG_HEADER + sizeof(unsigned char) * IMG_WIDTH * IMG_HEIGHT);
+	cudaMemcpyFromSymbol(img, &dev_result, IMG_HEADER + sizeof(unsigned char) * IMG_WIDTH * IMG_HEIGHT);
 
 	// Save file
 	fopen_s(&f_output_img, IMG_OUTPUT2, "wb");
-	fwrite(imgres, 1, IMG_HEADER + IMG_WIDTH * IMG_HEIGHT, f_output_img);
+	fwrite(img, 1, IMG_HEADER + IMG_WIDTH * IMG_HEIGHT, f_output_img);
 	fclose(f_output_img);
 
 	// Free CUDA managed host memory
