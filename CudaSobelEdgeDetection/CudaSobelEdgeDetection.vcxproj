@@ -86,6 +86,10 @@
   <ItemGroup>
     <ClCompile Include="res\PreciseTimer.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="img\input.bmp" />
+    <Image Include="img\output2.bmp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 10.1.targets" />
