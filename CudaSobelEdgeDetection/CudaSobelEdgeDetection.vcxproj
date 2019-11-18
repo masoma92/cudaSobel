@@ -88,7 +88,6 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="img\input.bmp" />
-    <Image Include="img\output2.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
