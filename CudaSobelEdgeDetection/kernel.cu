@@ -2,6 +2,7 @@
 #include "device_launch_parameters.h"
 #include <malloc.h>
 #include <stdio.h>
+#include <math.h>
 #include "res\Timing.h"
 
 // Image data
@@ -37,8 +38,9 @@ __global__ void EdgeDetectionKernel(unsigned char* img, unsigned char* img_outpu
 	int Gx[3][3] = { {-1,0,1}, {-2,0,2}, {-1,0,1} };
 	int Gy[3][3] = { {1,2,1}, {0,0,0}, {-1,-2,-1} };
 
-	int sumX = 0;
-	int sumY = 0;
+	double sumX = 0;
+	double sumY = 0;
+	double sum = 0;
 
 	for (int i = -1; i <= 1; i++) {
 		for (int j = -1; j <= 1; j++) {
@@ -48,7 +50,8 @@ __global__ void EdgeDetectionKernel(unsigned char* img, unsigned char* img_outpu
 		}
 	}
 
-	int sum = sumY + sumX;
+	
+	sum = sqrt(pow(sumY, 2) + pow(sumX, 2));
 	if (sum > 255) 
 		sum = 255;
 	if (sum < 0) 
@@ -90,9 +93,9 @@ void EdgeDetectionSequential(unsigned char* input_img, unsigned char* output_img
 	int Gx[3][3] = { {-1,0,1}, {-2,0,2}, {-1,0,1} };
 	int Gy[3][3] = { {1,2,1}, {0,0,0}, {-1,-2,-1} };
 
-	int sumX = 0;
-	int sumY = 0;
-	int sum = 0;
+	double sumX = 0;
+	double sumY = 0;
+	double sum = 0;
 
 	for (size_t i = IMG_HEADER+IMG_WIDTH; i < IMG_HEIGHT*IMG_WIDTH-IMG_WIDTH; i++)
 	{
@@ -108,7 +111,7 @@ void EdgeDetectionSequential(unsigned char* input_img, unsigned char* output_img
 			}
 		}
 
-		sum = sumY + sumX;
+		sum = sqrt(pow(sumY, 2) + pow(sumX, 2));
 		if (sum > 255)
 			sum = 255;
 		if (sum < 0)
