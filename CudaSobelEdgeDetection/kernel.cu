@@ -6,18 +6,19 @@
 
 // Image data
 // baby 1080; 4000; 4000; 125; 125; 32; 32
-// oldlady 1080; 512; 512; 16; 16; 32; 32
+// lady 1080; 512; 512; 16; 16; 32; 32
 // lena 1080; 512; 512; 16; 16; 32; 32
 
-#define IMG_INPUT "img\\lena.bmp"
-#define IMG_OUTPUT "img\\output.bmp"
+#define IMG_INPUT "img\\baby.bmp"
+#define IMG_OUTPUT "img\\outputSingle.bmp"
+#define IMG_OUTPUT2 "img\\outputMultiple.bmp"
 
 #define IMG_HEADER 1080
-#define IMG_WIDTH 512
-#define IMG_HEIGHT 512
+#define IMG_WIDTH 4000
+#define IMG_HEIGHT 4000
 
-#define BLOCKSIZE_X 16
-#define BLOCKSIZE_Y 16
+#define BLOCKSIZE_X 125
+#define BLOCKSIZE_Y 125
 #define THREAD_X 32
 #define THREAD_Y 32
 
@@ -25,7 +26,7 @@
 //ez annyit jelent, hogy egy 4000*4000-es képnél 125 block vízszintesen, 125 függőlegesen
 
 
-__global__ void SobelEdgeDetection(unsigned char* img)
+__global__ void EdgeDetectionKernel(unsigned char* img, unsigned char* img_output)
 {
 	//ez felel meg a szekvenciális kódban a két egybeágyazott for ciklusnak
 	int row = blockIdx.y * blockDim.y + threadIdx.y; //i blockidx a hanyadik block az oszlopban, blockdim az a blokkon belüli sor
@@ -53,17 +54,17 @@ __global__ void SobelEdgeDetection(unsigned char* img)
 	if (sum < 0) 
 		sum = 0;
 
-	__syncthreads();
-
-	img[row * IMG_WIDTH + col] = sum - '0';
+	img_output[row * IMG_WIDTH + col] = sum - '0';
 }
 
-
-void EdgeDetectionCaller(unsigned char* img)
+void EdgeDetectionCaller(unsigned char* img, unsigned char* img_output)
 {
 	//Allocate device memory
 	unsigned char* d_img;
+	unsigned char* d_img_output;
+
 	cudaMalloc((void**)&d_img, sizeof(unsigned char) * IMG_WIDTH * IMG_HEIGHT);
+	cudaMalloc((void**)&d_img_output, sizeof(unsigned char) * IMG_WIDTH * IMG_HEIGHT);
 
 
 	//Memory copy H->D
@@ -71,36 +72,85 @@ void EdgeDetectionCaller(unsigned char* img)
 
 
 	//Launch kernel
-	SobelEdgeDetection << < dim3(BLOCKSIZE_X, BLOCKSIZE_Y), dim3(THREAD_X, THREAD_Y) >> > (d_img);
+	EdgeDetectionKernel << < dim3(BLOCKSIZE_X, BLOCKSIZE_Y), dim3(THREAD_X, THREAD_Y) >> > (d_img, d_img_output);
 
 
 	//Memory copy D->H
 	cudaMemcpy(img + IMG_HEADER, d_img, sizeof(unsigned char) * IMG_WIDTH * IMG_HEIGHT, cudaMemcpyDeviceToHost);
+	cudaMemcpy(img_output + IMG_HEADER, d_img_output, sizeof(unsigned char) * IMG_WIDTH * IMG_HEIGHT, cudaMemcpyDeviceToHost);
 
 
 	//Free device memory
 	cudaFree(d_img);
+	cudaFree(d_img_output);
+}
 
+void EdgeDetectionSequential(unsigned char* input_img, unsigned char* output_img) {
+
+	int Gx[3][3] = { {-1,0,1}, {-2,0,2}, {-1,0,1} };
+	int Gy[3][3] = { {1,2,1}, {0,0,0}, {-1,-2,-1} };
+
+	int sumX = 0;
+	int sumY = 0;
+	int sum = 0;
+
+	for (size_t i = IMG_HEADER+IMG_WIDTH; i < IMG_HEIGHT*IMG_WIDTH-IMG_WIDTH; i++)
+	{
+		if ((i - IMG_HEADER) % (IMG_WIDTH+1) != 0 || (i - IMG_HEADER) % (IMG_WIDTH+1) != 1) {
+
+			for (int k = -1; k <= 1; k++) {
+				for (int l = -1; l <= 1; l++) {
+
+					char curPixel = input_img[i + (k * IMG_WIDTH) + l];
+					sumX += (curPixel + '0') * Gx[k + 1][l + 1];
+					sumY += (curPixel + '0') * Gy[k + 1][l + 1];
+				}
+			}
+		}
+
+		sum = sumY + sumX;
+		if (sum > 255)
+			sum = 255;
+		if (sum < 0)
+			sum = 0;
+
+		output_img[i] = sum - '0';
+	}
+
+	
 }
 
 int main()
 {
 	unsigned char* img;
+	unsigned char* img_output;
 	FILE* f_input_img, * f_output_img;
 
 	// Load image
 	img = (unsigned char*)malloc(IMG_HEADER + sizeof(unsigned char) * IMG_WIDTH * IMG_HEIGHT);
+	img_output = (unsigned char*)malloc(IMG_HEADER + sizeof(unsigned char) * IMG_WIDTH * IMG_HEIGHT);
 
 	fopen_s(&f_input_img, IMG_INPUT, "rb");
 	fread(img, 1, IMG_HEADER + IMG_WIDTH * IMG_HEIGHT, f_input_img);
 	fclose(f_input_img);
 
-	// Run single stream kernel
-	MEASURE_TIME(1, "ReduceContrastDefaultStream", EdgeDetectionCaller(img));
+	fopen_s(&f_input_img, IMG_INPUT, "rb");
+	fread(img_output, 1, IMG_HEADER + IMG_WIDTH * IMG_HEIGHT, f_input_img);
+	fclose(f_input_img);
+
+	MEASURE_TIME(1, "EdgeDetectionSequential", EdgeDetectionSequential(img, img_output));
+
+	fopen_s(&f_output_img, IMG_OUTPUT, "wb");
+	fwrite(img_output, 1, IMG_HEADER + IMG_WIDTH * IMG_HEIGHT, f_output_img);
+	fclose(f_output_img);
+
+	// Run cuda kernel
+	MEASURE_TIME(1, "EdgeDetectionParallelKernel", EdgeDetectionCaller(img, img_output));
 
 	// Save file
-	fopen_s(&f_output_img, IMG_OUTPUT, "wb");
-	fwrite(img, 1, IMG_HEADER + IMG_WIDTH * IMG_HEIGHT, f_output_img);
+	fopen_s(&f_output_img, IMG_OUTPUT2, "wb");
+	fwrite(img_output, 1, IMG_HEADER + IMG_WIDTH * IMG_HEIGHT, f_output_img);
 	fclose(f_output_img);
 	free(img);
+	free(img_output);
 }

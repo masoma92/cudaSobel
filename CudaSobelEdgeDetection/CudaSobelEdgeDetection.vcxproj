@@ -87,7 +87,10 @@
     <ClCompile Include="res\PreciseTimer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="img\baby.bmp" />
     <Image Include="img\input.bmp" />
+    <Image Include="img\lady.bmp" />
+    <Image Include="img\lena.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
