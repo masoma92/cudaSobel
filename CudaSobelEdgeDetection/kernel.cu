@@ -112,10 +112,10 @@ void EdgeDetectionSequential(unsigned char* input_img, unsigned char* output_img
 
 			sum = sqrt(pow(sumY, 2) + pow(sumX, 2));
 
-			/*if (sum > 255)
+			if (sum > 255)
 				sum = 255;
 			if (sum < 0)
-				sum = 0;*/
+				sum = 0;
 
 			output_img[(i * IMG_HEIGHT) + j] = sum;
 		}
