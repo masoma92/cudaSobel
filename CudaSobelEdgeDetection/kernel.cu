@@ -27,7 +27,7 @@
 //ez annyit jelent, hogy egy 4000*4000-es képnél 125 block vízszintesen, 125 függőlegesen
 
 
-__global__ void EdgeDetectionKernel(unsigned char* img, unsigned char* img_output)
+__global__ void EdgeDetectionKernel(unsigned char* input_img, unsigned char* output_img)
 {
 	//ez felel meg a szekvenciális kódban a két egybeágyazott for ciklusnak
 	int row = blockIdx.y * blockDim.y + threadIdx.y; //i blockidx a hanyadik block az oszlopban, blockdim.y = 32 thread db szám vízszintesen
@@ -44,7 +44,7 @@ __global__ void EdgeDetectionKernel(unsigned char* img, unsigned char* img_outpu
 
 	for (int i = -1; i <= 1; i++) {
 		for (int j = -1; j <= 1; j++) {
-			char curPixel = img[(row + j) * IMG_WIDTH + (col + i)];
+			char curPixel = input_img[(row + j) * IMG_WIDTH + (col + i)];
 			sumX += (curPixel) * Gx[i + 1][j + 1];
 			sumY += (curPixel) * Gy[i + 1][j + 1];
 		}
@@ -57,7 +57,7 @@ __global__ void EdgeDetectionKernel(unsigned char* img, unsigned char* img_outpu
 	if (sum < 0) 
 		sum = 0;
 
-	img_output[row * IMG_WIDTH + col] = sum;
+	output_img[row * IMG_WIDTH + col] = sum;
 }
 
 void EdgeDetectionCaller(unsigned char* img, unsigned char* img_output)
@@ -97,28 +97,28 @@ void EdgeDetectionSequential(unsigned char* input_img, unsigned char* output_img
 	int sumY = 0;
 	int sum = 0;
 
-	for (int i = IMG_HEADER + IMG_WIDTH; i < (IMG_HEIGHT*IMG_WIDTH)-IMG_WIDTH; i++) //első és utolsó sornyi pixelt kihagyja
+	for (int i = 1; i < IMG_HEIGHT-1; i++) 
 	{
-		if (((i - IMG_HEADER) % (IMG_WIDTH)) != 0 && ((i - IMG_HEADER) % (IMG_WIDTH)) != IMG_WIDTH-1) { //széleket kihagyja
-
+		for (int j = 1; j < IMG_WIDTH-1; j++)
+		{
 			for (int k = -1; k <= 1; k++) {
 				for (int l = -1; l <= 1; l++) {
 
-					char curPixel = input_img[i + (k * IMG_WIDTH) + l];
-					sumX += (curPixel) * Gx[k + 1][l + 1];
-					sumY += (curPixel) * Gy[k + 1][l + 1];
+					char curPixel = input_img[(i * IMG_HEIGHT) + j];
+					sumX += (curPixel)*Gx[k + 1][l + 1];
+					sumY += (curPixel)*Gy[k + 1][l + 1];
 				}
 			}
+
+			sum = sqrt(pow(sumY, 2) + pow(sumX, 2));
+
+			/*if (sum > 255)
+				sum = 255;
+			if (sum < 0)
+				sum = 0;*/
+
+			output_img[(i * IMG_HEIGHT) + j] = sum;
 		}
-
-		sum = sqrt(pow(sumY, 2) + pow(sumX, 2));
-
-		if (sum > 255)
-			sum = 255;
-		if (sum < 0)
-			sum = 0;
-
-		output_img[i] = sum;
 	}
 
 	
@@ -142,7 +142,7 @@ int main()
 	fread(img_output, 1, IMG_HEADER + IMG_WIDTH * IMG_HEIGHT, f_input_img);
 	fclose(f_input_img);
 
-	MEASURE_TIME(1, "EdgeDetectionSequential", EdgeDetectionSequential(img, img_output));
+	MEASURE_TIME(1, "EdgeDetectionSequential", EdgeDetectionSequential(img + IMG_HEADER, img_output + IMG_HEADER));
 
 	fopen_s(&f_output_img, IMG_OUTPUT, "wb");
 	fwrite(img_output, 1, IMG_HEADER + IMG_WIDTH * IMG_HEIGHT, f_output_img);
