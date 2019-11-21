@@ -54,8 +54,6 @@ __global__ void EdgeDetectionKernel(unsigned char* input_img, unsigned char* out
 	sum = sqrt(pow(sumY, 2) + pow(sumX, 2));
 	if (sum > 255) 
 		sum = 255;
-	if (sum < 0) 
-		sum = 0;
 
 	output_img[row * IMG_WIDTH + col] = sum;
 }
@@ -105,8 +103,8 @@ void EdgeDetectionSequential(unsigned char* input_img, unsigned char* output_img
 				for (int l = -1; l <= 1; l++) {
 
 					char curPixel = input_img[(i * IMG_HEIGHT) + j];
-					sumX += (curPixel)*Gx[k + 1][l + 1];
-					sumY += (curPixel)*Gy[k + 1][l + 1];
+					sumX += (curPixel) * Gx[k + 1][l + 1];
+					sumY += (curPixel) * Gy[k + 1][l + 1];
 				}
 			}
 
@@ -114,8 +112,6 @@ void EdgeDetectionSequential(unsigned char* input_img, unsigned char* output_img
 
 			if (sum > 255)
 				sum = 255;
-			if (sum < 0)
-				sum = 0;
 
 			output_img[(i * IMG_HEIGHT) + j] = sum;
 		}
