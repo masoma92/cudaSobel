@@ -10,16 +10,16 @@
 // lady 1080; 512; 512; 16; 16; 32; 32
 // lena 1080; 512; 512; 16; 16; 32; 32
 
-#define IMG_INPUT "img\\lena.bmp"
+#define IMG_INPUT "img\\baby.bmp"
 #define IMG_OUTPUT "img\\outputSingle.bmp"
 #define IMG_OUTPUT2 "img\\outputMultiple.bmp"
 
 #define IMG_HEADER 1080
-#define IMG_WIDTH 512
-#define IMG_HEIGHT 512
+#define IMG_WIDTH 4000
+#define IMG_HEIGHT 4000
 
-#define BLOCKSIZE_X 16
-#define BLOCKSIZE_Y 16
+#define BLOCKSIZE_X 512
+#define BLOCKSIZE_Y 512
 #define THREAD_X 32
 #define THREAD_Y 32
 
@@ -32,8 +32,6 @@ __global__ void EdgeDetectionKernel(unsigned char* input_img, unsigned char* out
 	//ez felel meg a szekvenciális kódban a két egybeágyazott for ciklusnak
 	int row = blockIdx.y * blockDim.y + threadIdx.y; //i blockidx a hanyadik block az oszlopban, blockdim.y = 32 thread db szám vízszintesen
 	int col = blockIdx.x * blockDim.x + threadIdx.x; //j
-
-	if (row >= IMG_HEIGHT || col >= IMG_WIDTH || row < 1 || col < 1) return; //olyan szál le se fusson ami kiindexelne a képből
 
 	int Gx[3][3] = { {-1,0,1}, {-2,0,2}, {-1,0,1} };
 	int Gy[3][3] = { {1,2,1}, {0,0,0}, {-1,-2,-1} };
@@ -51,7 +49,6 @@ __global__ void EdgeDetectionKernel(unsigned char* input_img, unsigned char* out
 		}
 	}
 
-	
 	sum = sqrt(pow(sumX, 2) + pow(sumY, 2));
 	if (sum > 255) 
 		sum = 255;
@@ -67,7 +64,6 @@ void EdgeDetectionCaller(unsigned char* img, unsigned char* img_output)
 
 	cudaMalloc((void**)&d_img, sizeof(unsigned char) * IMG_WIDTH * IMG_HEIGHT);
 	cudaMalloc((void**)&d_img_output, sizeof(unsigned char) * IMG_WIDTH * IMG_HEIGHT);
-
 
 	//Memory copy H->D
 	cudaMemcpy(d_img, img + IMG_HEADER, sizeof(unsigned char) * IMG_WIDTH * IMG_HEIGHT, cudaMemcpyHostToDevice);
@@ -103,23 +99,25 @@ void EdgeDetectionSequential(unsigned char* input_img, unsigned char* output_img
 			for (int k = -1; k <= 1; k++) {
 				for (int l = -1; l <= 1; l++) {
 
-					char curPixel = input_img[((i * IMG_HEIGHT) + j) + ((k * IMG_HEIGHT) + l)];
+					char curPixel = input_img[(i * IMG_HEIGHT + j) + (k * IMG_WIDTH + l)];
 
 					sumX += (curPixel) * Gx[k + 1][l + 1];
 					sumY += (curPixel) * Gy[k + 1][l + 1];
 				}
 			}
 
-
 			sum = sqrt(pow(sumX, 2) + pow(sumY, 2));
+
 			if (sum > 255)
 				sum = 255;
 
 			output_img[i * IMG_WIDTH + j] = sum;
+
+			sumX = 0;
+			sumY = 0;
+			sum = 0;
 		}
 	}
-
-	
 }
 
 int main()
